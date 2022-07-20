@@ -43,7 +43,7 @@ export type QueryMatch = {
 
 export type Resolution = {
   match: QueryMatch;
-  range: Range;
+  getRect: () => ClientRect;
 };
 
 export const PUNCTUATION =
@@ -214,7 +214,7 @@ function isSelectionOnEntityBoundary(
   });
 }
 
-function ShortcutTypeahead<TOption extends TypeaheadOption>({
+function PopoverMenu<TOption extends TypeaheadOption>({
   close,
   editor,
   resolution,
@@ -250,8 +250,7 @@ function ShortcutTypeahead<TOption extends TypeaheadOption>({
       containerDiv.setAttribute('id', 'typeahead-menu');
       containerDiv.setAttribute('role', 'listbox');
       if (rootElement !== null) {
-        const range = resolution.range;
-        const {left, top, height} = range.getBoundingClientRect();
+        const {left, top, height} = resolution.getRect();
         containerDiv.style.top = `${top + height + window.pageYOffset}px`;
         containerDiv.style.left = `${left + window.pageXOffset}px`;
         containerDiv.style.display = 'block';
@@ -490,7 +489,7 @@ type TypeaheadMenuPluginArgs<TOption extends TypeaheadOption> = {
   triggerFn: TriggerFn;
 };
 
-type TriggerFn = (text: string) => QueryMatch | null;
+type TriggerFn = (text: string, selection: RangeSelection) => QueryMatch | null;
 
 export function LexicalTypeaheadMenuPlugin<TOption extends TypeaheadOption>({
   options,
@@ -525,19 +524,20 @@ export function LexicalTypeaheadMenuPlugin<TOption extends TypeaheadOption>({
         }
         previousText = text;
 
-        const match = triggerFn(text);
+        const match = triggerFn(text, selection);
         onQueryChange(match ? match.matchingString : null);
 
         if (
           match !== null &&
           !isSelectionOnEntityBoundary(editor, match.leadOffset)
         ) {
+          debugger;
           const isRangePositioned = tryToPositionRange(match.leadOffset, range);
           if (isRangePositioned !== null) {
             startTransition(() =>
               setResolution({
+                getRect: () => range.getBoundingClientRect(),
                 match,
-                range,
               }),
             );
             return;
@@ -560,8 +560,49 @@ export function LexicalTypeaheadMenuPlugin<TOption extends TypeaheadOption>({
   }, []);
 
   return resolution === null || editor === null ? null : (
-    <ShortcutTypeahead
+    <PopoverMenu
       close={closeTypeahead}
+      resolution={resolution}
+      editor={editor}
+      options={options}
+      menuRenderFn={menuRenderFn}
+      onSelectOption={onSelectOption}
+    />
+  );
+}
+
+export function LexicalNodeMenuPlugin<TOption extends TypeaheadOption>({
+  options,
+  node,
+  setNode,
+  onSelectOption,
+  menuRenderFn,
+  triggerFn,
+}: TypeaheadMenuPluginArgs<TOption>): JSX.Element | null {
+  const [editor] = useLexicalComposerContext();
+
+  const [resolution, setResolution] = useState<Resolution | null>(null);
+
+  useEffect(() => {
+    if (node) {
+      editor.update(() => {
+        const domElement = editor.getElementByKey(node.getKey());
+
+        if (domElement) {
+          startTransition(() =>
+            setResolution({
+              getRect: () => domElement.getBoundingClientRect(),
+              match: {matchingString: ''},
+            }),
+          );
+        }
+      });
+    }
+  }, [node]);
+
+  return resolution === null || editor === null ? null : (
+    <PopoverMenu
+      close={() => setNode(null)}
       resolution={resolution}
       editor={editor}
       options={options}
