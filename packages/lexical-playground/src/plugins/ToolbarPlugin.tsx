@@ -90,10 +90,10 @@ import TextInput from '../ui/TextInput';
 import {INSERT_EQUATION_COMMAND} from './EquationsPlugin';
 import {INSERT_EXCALIDRAW_COMMAND} from './ExcalidrawPlugin';
 import {INSERT_IMAGE_COMMAND} from './ImagesPlugin';
+import {INSERT_EMBED_COMMAND} from './LexicalAutoEmbedPlugin';
 import {INSERT_POLL_COMMAND} from './PollPlugin';
-import {INSERT_TWEET_COMMAND} from './TwitterPlugin';
-import {INSERT_YOUTUBE_COMMAND} from './YouTubePlugin';
-import {INSERT_EMBED_COMMAND, TwitterEmbedConfig} from './AutoEmbedPlugin';
+import {INSERT_TWEET_COMMAND, TwitterEmbedConfig} from './TwitterPlugin';
+import {INSERT_YOUTUBE_COMMAND, YoutubeEmbedConfig} from './YouTubePlugin';
 
 const blockTypeToBlockName = {
   bullet: 'Bulleted List',
@@ -1315,13 +1315,6 @@ export default function ToolbarPlugin(): JSX.Element {
                   INSERT_EMBED_COMMAND,
                   TwitterEmbedConfig,
                 );
-                // INSERT_EMBED_COMMAND
-                // showModal('Insert Tweet', (onClose) => (
-                //   <InsertTweetDialog
-                //     activeEditor={activeEditor}
-                //     onClose={onClose}
-                //   />
-                // ));
               }}
               className="item">
               <i className="icon tweet" />
@@ -1329,12 +1322,10 @@ export default function ToolbarPlugin(): JSX.Element {
             </DropDownItem>
             <DropDownItem
               onClick={() => {
-                showModal('Insert YouTube Video', (onClose) => (
-                  <InsertYouTubeDialog
-                    activeEditor={activeEditor}
-                    onClose={onClose}
-                  />
-                ));
+                activeEditor.dispatchCommand(
+                  INSERT_EMBED_COMMAND,
+                  YoutubeEmbedConfig,
+                );
               }}
               className="item">
               <i className="icon youtube" />

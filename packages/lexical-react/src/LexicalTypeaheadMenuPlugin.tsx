@@ -9,6 +9,7 @@
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {mergeRegister} from '@lexical/utils';
 import {
+  $getNodeByKey,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
@@ -19,6 +20,8 @@ import {
   KEY_ESCAPE_COMMAND,
   KEY_TAB_COMMAND,
   LexicalEditor,
+  LexicalNode,
+  NodeKey,
   RangeSelection,
   TextNode,
 } from 'lexical';
@@ -154,7 +157,7 @@ function getFullMatchOffset(
 }
 
 /**
- * Split Lexica TextNode and return a new TextNode only containing matched text.
+ * Split Lexica; TextNode and return a new TextNode only containing matched text.
  * Common use cases include: removing the node, replacing with a new node.
  */
 function splitNodeContainingQuery(
@@ -250,9 +253,9 @@ function PopoverMenu<TOption extends TypeaheadOption>({
       containerDiv.setAttribute('id', 'typeahead-menu');
       containerDiv.setAttribute('role', 'listbox');
       if (rootElement !== null) {
-        const {left, top, height} = resolution.getRect();
+        const {left, top, height, width} = resolution.getRect();
         containerDiv.style.top = `${top + height + window.pageYOffset}px`;
-        containerDiv.style.left = `${left + window.pageXOffset}px`;
+        containerDiv.style.left = `${left + width + window.pageXOffset}px`;
         containerDiv.style.display = 'block';
         containerDiv.style.position = 'absolute';
         if (!containerDiv.isConnected) {
@@ -366,9 +369,7 @@ function PopoverMenu<TOption extends TypeaheadOption>({
         KEY_ESCAPE_COMMAND,
         (payload) => {
           const event = payload;
-          if (options === null || selectedIndex === null) {
-            return false;
-          }
+          debugger;
           event.preventDefault();
           event.stopImmediatePropagation();
           close();
@@ -397,6 +398,7 @@ function PopoverMenu<TOption extends TypeaheadOption>({
       editor.registerCommand(
         KEY_ENTER_COMMAND,
         (event: KeyboardEvent | null) => {
+          debugger;
           if (
             options === null ||
             selectedIndex === null ||
@@ -489,7 +491,7 @@ type TypeaheadMenuPluginArgs<TOption extends TypeaheadOption> = {
   triggerFn: TriggerFn;
 };
 
-type TriggerFn = (text: string, selection: RangeSelection) => QueryMatch | null;
+type TriggerFn = (text: string, editor: LexicalEditor) => QueryMatch | null;
 
 export function LexicalTypeaheadMenuPlugin<TOption extends TypeaheadOption>({
   options,
@@ -524,7 +526,7 @@ export function LexicalTypeaheadMenuPlugin<TOption extends TypeaheadOption>({
         }
         previousText = text;
 
-        const match = triggerFn(text, selection);
+        const match = triggerFn(text, editor);
         onQueryChange(match ? match.matchingString : null);
 
         if (
@@ -571,38 +573,58 @@ export function LexicalTypeaheadMenuPlugin<TOption extends TypeaheadOption>({
   );
 }
 
+type NodeMenuPluginArgs<TOption extends TypeaheadOption> = {
+  onSelectOption: (
+    option: TOption,
+    textNodeContainingQuery: TextNode | null,
+    closeMenu: () => void,
+    matchingString: string,
+  ) => void;
+  options: Array<TOption>;
+  nodeKey: NodeKey | null;
+  onClose: () => void;
+  menuRenderFn: MenuRenderFn<TOption>;
+};
+
 export function LexicalNodeMenuPlugin<TOption extends TypeaheadOption>({
   options,
-  node,
-  setNode,
+  nodeKey,
+  onClose,
   onSelectOption,
   menuRenderFn,
-  triggerFn,
-}: TypeaheadMenuPluginArgs<TOption>): JSX.Element | null {
+}: NodeMenuPluginArgs<TOption>): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
 
   const [resolution, setResolution] = useState<Resolution | null>(null);
 
   useEffect(() => {
-    if (node) {
+    if (nodeKey) {
       editor.update(() => {
-        const domElement = editor.getElementByKey(node.getKey());
+        const node = $getNodeByKey(nodeKey);
+        const domElement = editor.getElementByKey(nodeKey);
 
-        if (domElement) {
+        if (node != null && domElement != null) {
+          const text = node.getTextContent();
           startTransition(() =>
             setResolution({
               getRect: () => domElement.getBoundingClientRect(),
-              match: {matchingString: ''},
+              match: {
+                matchingString: text,
+                leadOffset: text.length,
+                replaceableString: text,
+              },
             }),
           );
         }
       });
+    } else if (resolution != null) {
+      startTransition(() => setResolution(null));
     }
-  }, [node]);
+  }, [nodeKey]);
 
   return resolution === null || editor === null ? null : (
     <PopoverMenu
-      close={() => setNode(null)}
+      close={onClose}
       resolution={resolution}
       editor={editor}
       options={options}

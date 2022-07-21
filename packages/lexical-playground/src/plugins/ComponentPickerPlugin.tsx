@@ -44,6 +44,8 @@ import {
   InsertTableDialog,
   InsertTweetDialog,
 } from './ToolbarPlugin';
+import {INSERT_EMBED_COMMAND} from './LexicalAutoEmbedPlugin';
+import {TwitterEmbedConfig} from './TwitterPlugin';
 
 class ComponentPickerOption extends TypeaheadOption {
   // What shows up in the editor
@@ -275,9 +277,7 @@ export default function ComponentPickerMenuPlugin(): JSX.Element {
         icon: <i className="icon tweet" />,
         keywords: ['twitter', 'embed', 'tweet'],
         onSelect: () =>
-          showModal('Insert Tweet', (onClose) => (
-            <InsertTweetDialog activeEditor={editor} onClose={onClose} />
-          )),
+          editor.dispatchCommand(INSERT_EMBED_COMMAND, TwitterEmbedConfig),
       }),
       new ComponentPickerOption('Equation', {
         icon: <i className="icon equation" />,

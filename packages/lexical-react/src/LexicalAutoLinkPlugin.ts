@@ -6,7 +6,13 @@
  *
  */
 
-import type {ElementNode, LexicalEditor, LexicalNode} from 'lexical';
+import type {
+  ElementNode,
+  LexicalCommand,
+  LexicalEditor,
+  LexicalNode,
+  NodeKey,
+} from 'lexical';
 
 import {
   $createAutoLinkNode,
@@ -21,6 +27,7 @@ import {
   $isElementNode,
   $isLineBreakNode,
   $isTextNode,
+  createCommand,
   TextNode,
 } from 'lexical';
 import {useEffect} from 'react';
@@ -36,6 +43,8 @@ type LinkMatcherResult = {
 };
 
 export type LinkMatcher = (text: string) => LinkMatcherResult | null;
+
+export const AUTO_LINK_COMMAND: LexicalCommand<NodeKey> = createCommand();
 
 function findFirstMatch(
   text: string,
@@ -84,6 +93,7 @@ function handleLinkCreation(
   node: TextNode,
   matchers: Array<LinkMatcher>,
   onChange: ChangeHandler,
+  editor: LexicalEditor,
 ): void {
   const nodeText = node.getTextContent();
   const nodeTextLength = nodeText.length;
@@ -246,7 +256,7 @@ function useAutoLink(
           handleLinkEdit(parent, matchers, onChangeWrapped);
         } else if (!$isLinkNode(parent)) {
           if (textNode.isSimpleText()) {
-            handleLinkCreation(textNode, matchers, onChangeWrapped);
+            handleLinkCreation(textNode, matchers, onChangeWrapped, editor);
           }
 
           handleBadNeighbors(textNode, onChangeWrapped);
